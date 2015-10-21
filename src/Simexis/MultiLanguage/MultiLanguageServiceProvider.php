@@ -2,6 +2,8 @@
 
 namespace Simexis\MultiLanguage;
 
+use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Translation\TranslationServiceProvider;
 use Simexis\MultiLanguage\Facades\Translator;
 use Simexis\MultiLanguage\Loaders\FileLoader;
@@ -29,10 +31,6 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
         $this->publishes([
             __DIR__.'/config/config.php' => config_path('multilanguage.php'),
         ], 'config');
-		
-		$this->publishes([
-			realpath(__DIR__.'/migrations') => app()->databasePath().'/migrations',
-		]);
 
         $this->mergeConfigFrom(
             __DIR__.'/config/config.php', 'multilanguage'
@@ -61,10 +59,20 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 
 			$mode = $app['config']->get('multilanguage.mode');
 
-			if ($mode == 'auto' || empty($mode)){
+			if ($mode == 'auto' || empty($mode))
 				$mode = ($this->app['config']->get('app.debug') ? 'mixed' : 'database');
-			}
-
+			
+			if(!$this->checkTablesExists())
+				$mode = 'filesystem';
+			
+			$this->app->bindShared('translation.provider', function($app) use($languageProvider){
+				return $languageProvider;
+			});
+			
+			$this->app->bindShared('translation.provider.entry', function($app) use($langEntryProvider){
+				return $langEntryProvider;
+			});
+			
 			switch ($mode) {
 				case 'mixed':
 					return new MixedLoader($languageProvider, $langEntryProvider, $app);
@@ -120,10 +128,33 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	/**
 	 * Bootstrap the application events.
 	 *
+     * @param  \Illuminate\Routing\Router  $router
 	 * @return void
 	 */
-    public function boot()
+    public function boot(Router $router)
     { 
+        $viewPath = __DIR__.'/resources/views';
+        $this->loadViewsFrom($viewPath, 'multilanguage');
+        $this->publishes([
+            $viewPath => base_path('resources/views/vendor/multilanguage'),
+        ], 'views');
+		
+		$this->publishes([
+			realpath(__DIR__.'/migrations') => database_path('migrations'),
+		]);
+        
+		//if tables exists
+		if($this->checkTablesExists()) {
+			$config = $this->app['config']->get('multilanguage.route', []);
+			if(!isset($config['namespace']))
+				$config['namespace'] = 'Simexis\MultiLanguage\Controllers';
+
+			$router->group($config, function($router)
+			{
+				$router->get('view/{group}', 'MultilanguageController@getView');
+				$router->controller('/', 'MultilanguageController');
+			});
+		}
 		
     }
 
@@ -134,7 +165,24 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	 */
 	public function provides()
 	{
-		return ['translator', 'translation.loader'];
+		return ['translator', 'translation.loader', 'translation.provider', 'translation.provider.entry'];
+	}
+
+	/**
+	 * Get the services provided by the provider.
+	 *
+	 * @return array
+	 */
+	private function checkTablesExists()
+	{
+		static $check;
+		if(!is_null($check))
+			return $check;
+		try {
+			return $check = DB::table('languages')->exists() && DB::table('language_entries')->exists();
+		} catch(\Exception $e) {
+			return $check = false;
+		}
 	}
 
 }

@@ -4,6 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 
 //https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
 
+use Simexis\MultiLanguage\Providers\LanguageProvider;
+
 class CreateLanguagesTable extends Migration {
 
 	/**
@@ -24,6 +26,16 @@ class CreateLanguagesTable extends Migration {
 			
 			$table->softDeletes();
 		});
+		
+		$languageProvider 	= new LanguageProvider($app['config']->get('multilanguage.language.model'));
+		$language = $this->languageProvider->findByLocale('en');
+		if(!$language) {
+			$languageProvider->create([
+				config('multilanguage.locale_key') => 'en',
+				'name' => 'English'
+			]);
+		}
+		
 	}
 
 	/**

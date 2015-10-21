@@ -86,6 +86,17 @@ class LanguageProvider {
 	}
 
 	/**
+	 * Returns the deleted language with id.
+	 *
+	 *  @param  string  $locale
+	 * 	@return array  $languages
+	 */
+	public function findTrashedByLocale($locale)
+	{
+		return $this->createModel()->newQuery()->withTrashed()->where(config('multilanguage.locale_key'), '=', $locale)->first();
+	}
+
+	/**
 	 * Returns all deleted languages.
 	 *
 	 * @return array  $languages
@@ -115,6 +126,17 @@ class LanguageProvider {
 	public function restore($id)
 	{
 		return $this->findTrashedById($id)->restore();
+	}
+
+	/**
+	 * Restore a deleted language.
+	 *
+	 *	@param  string  $locale
+	 * 	@return array  $languages
+	 */
+	public function restoreByLocale($locale)
+	{
+		return $this->findTrashedByLocale($locale)->restore();
 	}
 
 	/**
