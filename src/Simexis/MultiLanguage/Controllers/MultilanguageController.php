@@ -22,7 +22,7 @@ class MultilanguageController extends Controller {
     }
 
     public function getIndex($group = null)
-    {
+    {	
         $locales = $this->manager->getLocales();
         $groups = $this->manager->getGroups(config('multilanguage.exclude_groups'));
         
