@@ -12,6 +12,7 @@ use Simexis\MultiLanguage\Loaders\MixedLoader;
 use Simexis\MultiLanguage\Providers\LanguageProvider;
 use Simexis\MultiLanguage\Providers\LanguageEntryProvider;
 use Simexis\MultiLanguage\Helpers\Render;
+use Simexis\MultiLanguage\Generators\UrlGenerator;
 
 class MultiLanguageServiceProvider extends TranslationServiceProvider {
 
@@ -54,6 +55,7 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 		
 		$this->registerTranslator();
 		$this->registerRender();
+		$this->registerUrlGenerator();
 		
     }
 
@@ -144,6 +146,86 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 		});
 	}
 
+    /**
+     * Register the URL generator service.
+     *
+     * @return void
+     */
+    protected function registerUrlGenerator()
+    {
+        $this->app['url'] = $this->app->share(function ($app) {
+            $routes = $app['router']->getRoutes();
+
+			$app['events']->listen('router.before', function($request, $response) {
+				$locales = app('translator.manager')->getLocales();
+				if(array_key_exists($request->segment(1), $locales)) {
+					$this->serverModify($request, $locales);
+				}
+			});
+			
+            // The URL generator needs the route collection that exists on the router.
+            // Keep in mind this is an object, so we're passing by references here
+            // and all the registered routes will be available to the generator.
+            $app->instance('routes', $routes);
+
+            $url = new UrlGenerator(
+                $routes, $app->rebinding(
+                    'request', $this->requestRebinder()
+                )
+            );
+
+            $url->setSessionResolver(function () {
+                return $this->app['session'];
+            });
+
+            // If the route collection is "rebound", for example, when the routes stay
+            // cached for the application, we will need to rebind the routes on the
+            // URL generator instance so it has the latest version of the routes.
+            $app->rebinding('routes', function ($app, $routes) {
+                $app['url']->setRoutes($routes);
+            });
+
+            return $url;
+        });
+		
+		//var_dump($this->app['url']->route('installer::finish'));
+    }
+	
+	private function serverModify($request, $locales) {
+		$this->app->setLocale($request->segment(1));
+		$path = substr($request->path(), 1) == '/' ? substr($request->path(), 0, 1) : $request->path();
+		if(array_key_exists(strtolower($path), $locales)) {
+			$serverpath = explode('/' . $path, $request->server->get('REQUEST_URI'));
+			$request->server->set('REQUEST_URI', $serverpath[0] . '/');
+		} else {
+			$serverpath = $request->server->get('REQUEST_URI');
+			$serverpath = str_replace($path, preg_replace('~^' . $request->segment(1) . '\/~i','',$path), $serverpath);
+			$request->server->set('REQUEST_URI', rtrim($serverpath, '/') . '/');
+		}
+		
+		$request->initialize(
+			$request->query->all(), 
+			$request->request->all(), 
+			$request->attributes->all(), 
+			$request->cookies->all(), 
+			$request->files->all(), 
+			$request->server->all(), 
+			$request->server->getHeaders()
+		);
+	}
+
+    /**
+     * Get the URL generator request rebinder.
+     *
+     * @return \Closure
+     */
+    protected function requestRebinder()
+    {
+        return function ($app, $request) {
+            $app['url']->setRequest($request);
+        };
+    }
+
 	/**
 	 * Register the service provider.
 	 *
@@ -213,7 +295,9 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 			'translator.provider.entry', 
 			'translator.manager', 
 			'translator.fileloader',
-			'Simexis\MultiLanguage\Helpers\Render'
+			'Simexis\MultiLanguage\Helpers\Render',
+			'url',
+			'route'
 		];
 		foreach($this->commands AS $command)
 			$providers[] = static::$NAMESPACE . $command;
