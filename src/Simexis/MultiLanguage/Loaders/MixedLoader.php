@@ -46,6 +46,38 @@ class MixedLoader extends Loader implements LoaderInterface {
 	public function loadRawLocale($locale, $group, $namespace = null)
 	{
 		$namespace = $namespace ?: '*';
-		return array_merge($this->databaseLoader->loadRawLocale($locale, $group, $namespace), $this->fileLoader->loadRawLocale($locale, $group, $namespace));
+		return $this->array_merge($this->fileLoader->loadRawLocale($locale, $group, $namespace), $this->databaseLoader->loadRawLocale($locale, $group, $namespace));
+	}
+	
+	/**
+	 * Merge one or more arrays
+	 * 
+	 * @param
+	 *        	array1 array <p>
+	 *        	Initial array to merge.
+	 *        	</p>
+	 * @param
+	 *        	array2 array[optional]
+	 * @param
+	 *        	_ array[optional]
+	 * @return array the resulting array.
+	 */
+	public function array_merge(array $array1, array $array2 = null) {
+		$args = func_get_args ();
+		if (count ( $args ) < 2)
+			return $array1;
+		
+		for($i = 1; $i < count ( $args ); $i ++) {
+			if (is_array ( $args [$i] )) {
+				foreach ( $args [$i] as $key => $val ) {
+					if (is_array ( $args [$i] [$key] )) {
+						$array1 [$key] = (array_key_exists ( $key, $array1 ) && is_array ( $array1 [$key] )) ? $this->array_merge ( $array1 [$key], $args [$i] [$key] ) : $args [$i] [$key];
+					} else {
+						$array1 [$key] = $val;
+					}
+				}
+			}
+		}
+		return $array1;
 	}
 }

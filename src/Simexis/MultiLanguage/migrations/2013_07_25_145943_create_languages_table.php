@@ -27,8 +27,8 @@ class CreateLanguagesTable extends Migration {
 			$table->softDeletes();
 		});
 		
-		$languageProvider 	= new LanguageProvider($app['config']->get('multilanguage.language.model'));
-		$language = $this->languageProvider->findByLocale('en');
+		$languageProvider 	= new LanguageProvider();
+		$language = $languageProvider->findByLocale('en');
 		if(!$language) {
 			$languageProvider->create([
 				config('multilanguage.locale_key') => 'en',

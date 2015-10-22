@@ -11,6 +11,7 @@ use Simexis\MultiLanguage\Loaders\DatabaseLoader;
 use Simexis\MultiLanguage\Loaders\MixedLoader;
 use Simexis\MultiLanguage\Providers\LanguageProvider;
 use Simexis\MultiLanguage\Providers\LanguageEntryProvider;
+use Simexis\MultiLanguage\Helpers\Render;
 
 class MultiLanguageServiceProvider extends TranslationServiceProvider {
 
@@ -20,6 +21,15 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	 * @var bool
 	 */
 	protected $defer = false;
+	
+	private $commands = [
+		'AppendCommand',
+		'ReplaceCommand',
+		'TruncateCommand',
+		'ClearCommand',
+	];
+	
+	private static $NAMESPACE = '\\Simexis\\MultiLanguage\\Commands\\';
 
     /**
 	 * Register the service provider.
@@ -38,11 +48,12 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 		
 		$this->registerLoader();
 		$this->registerManager();
-		$this->registerTranslationFileLoader();
 
-		$this->commands('translator.load');
+		foreach($this->commands AS $command)
+			$this->commands(static::$NAMESPACE . $command);
 		
 		$this->registerTranslator();
+		$this->registerRender();
 		
     }
 
@@ -112,23 +123,6 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	}
 
 	/**
-	 * Register the translation file loader command.
-	 *
-	 * @return void
-	 */
-	public function registerTranslationFileLoader()
-	{
-		$this->app->bindShared('translator.load', function($app)
-		{
-			$provider = $app['translator.provider'];
-			$entry = $app['translator.provider.entry'];
-			$fileLoader = $app['translator.fileloader'];
-
-			return new Commands\FileLoaderCommand($provider, $entry, $fileLoader);
-		});
-	}
-
-	/**
 	 * Register the service provider.
 	 *
 	 * @return void
@@ -151,6 +145,21 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	}
 
 	/**
+	 * Register the service provider.
+	 *
+	 * @return void
+	 */
+	public function registerRender()
+	{
+		$this->app->bindShared('Simexis\MultiLanguage\Helpers\Render', function ($app) {
+            return new Render($app);
+        });
+		
+		foreach(app('files')->allFiles(__DIR__ . '/Assets') AS $file)
+			app('Simexis\MultiLanguage\Helpers\Render')->setAssets($file->getPathname());
+	}
+
+	/**
 	 * Bootstrap the application events.
 	 *
      * @param \Illuminate\Routing\Router  $router
@@ -159,15 +168,20 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	 */
     public function boot(Router $router, Manager $manager)
     { 
-        $viewPath = __DIR__.'/resources/views';
-        $this->loadViewsFrom($viewPath, 'multilanguage');
+        $this->loadViewsFrom(__DIR__.'/resources/views', 'multilanguage');
+		$this->loadTranslationsFrom(__DIR__.'/Lang', 'multilanguage');
+			
         $this->publishes([
-            $viewPath => base_path('resources/views/vendor/multilanguage'),
+            __DIR__.'/resources/views' => base_path('resources/views/vendor/multilanguage'),
         ], 'views');
 		
 		$this->publishes([
 			realpath(__DIR__.'/migrations') => database_path('migrations'),
 		]);
+		
+        $this->publishes([
+            __DIR__.'/Lang' => base_path('resources/lang'),
+        ]);
 
 		//if tables exists
 		if($this->checkTablesExists()) {
@@ -178,6 +192,7 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 			$router->group($config, function($router)
 			{
 				$router->get('view/{group}', 'MultilanguageController@getView');
+				$router->controller('/assets', 'AssetController');
 				$router->controller('/', 'MultilanguageController');
 			});
 		}
@@ -191,14 +206,19 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	 */
 	public function provides()
 	{
-		return [
+		$providers = [
 			'translator', 
 			'translator.loader', 
 			'translator.provider', 
 			'translator.provider.entry', 
 			'translator.manager', 
-			'translator.fileloader'
+			'translator.fileloader',
+			'Simexis\MultiLanguage\Helpers\Render'
 		];
+		foreach($this->commands AS $command)
+			$providers[] = static::$NAMESPACE . $command;
+			
+		return $providers;
 	}
 
 	/**

@@ -2,6 +2,7 @@
 
 namespace Simexis\MultiLanguage\Controllers;
 
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Collection;
@@ -24,9 +25,9 @@ class MultilanguageController extends Controller {
     {
         $locales = $this->manager->getLocales();
         $groups = $this->manager->getGroups(config('multilanguage.exclude_groups'));
-        $groups = [''=>'Choose a group'] + $groups;
         
 		$allTranslations = $this->manager->getItems($group);
+		$defaults = $this->manager->loadDefault($group); 
 		$numTranslations = $allTranslations->count();
 		$numChanged = $allTranslations->where('locked', Manager::LOCKED)->count();
 
@@ -36,6 +37,7 @@ class MultilanguageController extends Controller {
 			->with('translations', $translations)
 			->with('locales', $locales)
 			->with('groups', $groups)
+			->with('defaults', $defaults)
 			->with('group', $group)
 			->with('numTranslations', $numTranslations)
 			->with('numChanged', $numChanged)
@@ -61,9 +63,27 @@ class MultilanguageController extends Controller {
                 'item' => $item,
             ]);
 			
+			$defaults = $this->manager->loadDefault($group); 
+			
+			
             $translation->text = (string) $value ?: '';
-            $translation->locked = Manager::LOCKED;
-            return $translation->save() ? ['status' => 'ok'] : ['status' => 'error'];
+            $translation->locked = isset($defaults[$item]) ? ($translation->text != $defaults[$item] ? Manager::LOCKED : Manager::UNLOCKED) : Manager::LOCKED;
+			
+			if(!$translation->text) {
+				try {
+					$translation->delete();
+					return ['status' => 'delete'];
+				} catch(Exception $e) {
+					return ['status' => 'error', 'message' => $e->getMessage()];
+				}
+			}
+			
+			try {
+				$translation->save();
+				return ['status' => 'save', 'locked' => $translation->locked];
+			} catch(Exception $e) {
+				return ['status' => 'error', 'message' => $e->getMessage()];
+			}
         }
     }
 
@@ -78,6 +98,9 @@ class MultilanguageController extends Controller {
 			break;
 			case 'truncate' === $action:
 				$counter = $this->manager->truncateTranslations();
+			break;
+			case 'clear' === $action:
+				$counter = $this->manager->clearTranslations();
 			break;
 		}
 		

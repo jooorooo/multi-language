@@ -136,6 +136,36 @@ class Manager {
         return $this->getEntryModel()->truncate();
     }
 
-	
+    public function loadDefault($group)
+    {
+        $translations = $this->fileLoader->load(config('multilanguage.locale'), $group);
+		if ($translations && is_array($translations)) 
+			return array_dot($translations);
+		return [];
+    }
+
+	public function clearTranslations() {
+		$files = new Filesystem();
+		$locales = $this->getLocales();
+		$arrays = [];
+		foreach($files->files(app()->langPath() . DIRECTORY_SEPARATOR . config('multilanguage.locale')) as $file) {
+			$group = pathinfo($file, PATHINFO_FILENAME);
+			$translations = $this->fileLoader->load(config('multilanguage.local'), $group);
+			if ($translations && is_array($translations)) {
+				$arrays[$group] = array_dot($translations);
+			}
+		}
+		if(!$arrays)
+			return $this->truncateTranslations();
+		
+		$model = $this->getEntryModel()->whereNotIn('group', array_keys($arrays));
+		foreach($arrays AS $group => $items) {
+			$model = $model->orWhere(function($query) use($group, $items) {
+				$query->where('group', $group)
+					->whereNotIn('item', array_keys($items));
+			});
+		}
+		return $model->delete();
+	}
 
 }

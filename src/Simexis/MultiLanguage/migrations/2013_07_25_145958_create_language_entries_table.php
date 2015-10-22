@@ -24,7 +24,7 @@ class CreateLanguageEntriesTable extends Migration {
 			$table->foreign(config('multilanguage.locale_key'))
 				->references(config('multilanguage.locale_key'))
 				->on('languages')->onDelete('cascade')->onUpdate('cascade');
-			$table->unique(array(config('multilanguage.locale_key'), 'namespace', 'group', 'item'));
+			$table->unique(array(config('multilanguage.locale_key'), 'group', 'item'));
 		});
 	}
 

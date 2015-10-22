@@ -14,31 +14,6 @@ trait Translatable
 {
 	
 	private $__lacales__;
-	
-    /**
-     * Alias for getTranslation()
-     *
-     * @param strign|null $locale
-     * @param bool $withFallback
-     *
-     * @return \Illuminate\Database\Eloquent\Model|null
-     */
-    public function translate($locale = null, $withFallback = false)
-    {
-        return $this->getTranslation($locale, $withFallback);
-    }
-
-    /**
-     * Alias for getTranslation()
-     *
-     * @param string $locale
-     *
-     * @return \Illuminate\Database\Eloquent\Model|null
-     */
-    public function translateOrDefault($locale)
-    {
-        return $this->getTranslation($locale, true);
-    }
 
     /**
      * Alias for getTranslationOrNew()
@@ -54,20 +29,16 @@ trait Translatable
 
     /**
      * @param string|null $locale
-     * @param bool        $withFallback
      *
      * @return \Illuminate\Database\Eloquent\Model|null
      */
-    public function getTranslation($locale = null, $withFallback = null)
+    public function translate($locale = null, $withFallback = null)
     {
         $locale = $locale ?: $this->locale();
 
-        $withFallback = $withFallback === null ? $this->useFallback() : $withFallback;
-
         if ($this->getTranslationByLocaleKey($locale)) {
             $translation = $this->getTranslationByLocaleKey($locale);
-        } elseif ($withFallback
-            && $this->getFallbackLocale()
+        } elseif ($this->getFallbackLocale()
             && $this->getTranslationByLocaleKey($this->getFallbackLocale())
         ) {
             $translation = $this->getTranslationByLocaleKey($this->getFallbackLocale());
@@ -150,11 +121,11 @@ trait Translatable
         }
 
         if ($this->isTranslationAttribute($key)) {
-            if ($this->getTranslation($locale) === null) {
+            if ($this->translate($locale) === null) {
                 return;
             }
 
-            return $this->getTranslation($locale)->$key;
+            return $this->translate($locale)->$key;
         }
 
         return parent::getAttribute($key);
@@ -219,7 +190,7 @@ trait Translatable
      */
     protected function getTranslationOrNew($locale)
     {
-        if (($translation = $this->getTranslation($locale, false)) === null) {
+        if (($translation = $this->translate($locale, false)) === null) {
             $translation = $this->getNewTranslation($locale);
         }
 
@@ -257,14 +228,8 @@ trait Translatable
      * @param string $key
      */
     private function getTranslationByLocaleKey($key)
-    {
-        foreach ($this->translations as $translation) {
-            if ($translation->getAttribute($this->getLocaleKey()) == $key) {
-                return $translation;
-            }
-        }
-
-        return;
+    { 
+		return $this->translations->where($this->getLocaleKey(), $key)->first();
     }
 
     /**
@@ -320,7 +285,7 @@ trait Translatable
     {
 		
 		if(is_null($this->__lacales__)) {
-			$localesDb = with(new LanguageProvider(config('multilanguage.language.model')))->findAll();
+			$localesDb = with(new LanguageProvider())->findAll();
 			$this->__lacales__ = [];
 			foreach($localesDb AS $l) {
 				$this->__lacales__[] = $l->{config('multilanguage.locale_key')};
@@ -502,7 +467,7 @@ trait Translatable
                 continue;
             }
 
-            if ($translations = $this->getTranslation()) {
+            if ($translations = $this->translate()) {
                 $attributes[$field] = $translations->$field;
             }
         }
@@ -531,7 +496,6 @@ trait Translatable
      */
     protected function locale()
     {
-        return config('multilanguage.locale')
-            ?: App::make('translator')->getLocale();
+        return App::getLocale();
     }
 }

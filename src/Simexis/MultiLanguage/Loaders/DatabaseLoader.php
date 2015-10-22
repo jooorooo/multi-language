@@ -23,8 +23,13 @@ class DatabaseLoader extends Loader implements LoaderInterface {
 		$namespace = $namespace ?: '*';
 		$language 	= $this->languageProvider->findByLocale($locale);
 		if ($language) {
-			$entries = $language->entries()->where('group', '=', $group)->get();
-			if ($entries) {
+			if($language->entries()->where('group', '=', $group)->first()) {
+				$entries = $language->entries()->where('group', '=', $group)->get();
+				foreach($entries as $entry) {
+					array_set($langArray, $entry->item, $entry->text);
+				}
+			} else if($locale !== config('multilanguage.locale') && !is_null($language	= $this->languageProvider->findByLocale(config('multilanguage.locale')))) {
+				$entries = $language->entries()->where('group', '=', $group)->get();
 				foreach($entries as $entry) {
 					array_set($langArray, $entry->item, $entry->text);
 				}
@@ -32,4 +37,5 @@ class DatabaseLoader extends Loader implements LoaderInterface {
 		}
 		return $langArray;
 	}
+	
 }
