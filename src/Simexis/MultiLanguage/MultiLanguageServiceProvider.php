@@ -37,6 +37,7 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
         );
 		
 		$this->registerLoader();
+		$this->registerManager();
 		$this->registerTranslationFileLoader();
 
 		$this->commands('translator.load');
@@ -52,10 +53,10 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	 */
 	protected function registerLoader()
 	{ 
-		$this->app->bindShared('translation.loader', function($app)
+		$this->app->bindShared('translator.loader', function($app)
 		{ 
-			$languageProvider 	= new LanguageProvider($app['config']->get('multilanguage.language.model'));
-			$langEntryProvider 	= new LanguageEntryProvider($app['config']->get('multilanguage.language_entry.model'));
+			$languageProvider 	= new LanguageProvider();
+			$langEntryProvider 	= new LanguageEntryProvider();
 
 			$mode = $app['config']->get('multilanguage.mode');
 
@@ -65,12 +66,16 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 			if(!$this->checkTablesExists())
 				$mode = 'filesystem';
 			
-			$this->app->bindShared('translation.provider', function($app) use($languageProvider){
+			$this->app->bindShared('translator.provider', function($app) use($languageProvider){
 				return $languageProvider;
 			});
 			
-			$this->app->bindShared('translation.provider.entry', function($app) use($langEntryProvider){
+			$this->app->bindShared('translator.provider.entry', function($app) use($langEntryProvider){
 				return $langEntryProvider;
+			});
+			
+			$this->app->bindShared('translator.fileloader', function($app) use($languageProvider, $langEntryProvider){
+				return new FileLoader($languageProvider, $langEntryProvider, $app);
 			});
 			
 			switch ($mode) {
@@ -88,6 +93,25 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	}
 
 	/**
+	 * Register the service provider.
+	 *
+	 * @return void
+	 */
+	public function registerManager()
+	{
+		$this->app->bindShared('translator.manager', function($app)
+		{
+			$provider = $app['translator.provider'];
+			$entry = $app['translator.provider.entry'];
+			$fileLoader = $app['translator.fileloader'];
+
+			$manager = new Manager($provider, $entry, $fileLoader);
+
+			return $manager;
+		});
+	}
+
+	/**
 	 * Register the translation file loader command.
 	 *
 	 * @return void
@@ -96,10 +120,11 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	{
 		$this->app->bindShared('translator.load', function($app)
 		{
-			$languageProvider 	= new LanguageProvider($app['config']->get('multilanguage.language.model'));
-			$langEntryProvider 	= new LanguageEntryProvider($app['config']->get('multilanguage.language_entry.model'));
-			$fileLoader 				= new FileLoader($languageProvider, $langEntryProvider, $app);
-			return new Commands\FileLoaderCommand($languageProvider, $langEntryProvider, $fileLoader);
+			$provider = $app['translator.provider'];
+			$entry = $app['translator.provider.entry'];
+			$fileLoader = $app['translator.fileloader'];
+
+			return new Commands\FileLoaderCommand($provider, $entry, $fileLoader);
 		});
 	}
 
@@ -112,9 +137,9 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	{
 		$this->app->bindShared('translator', function($app)
 		{
-			$loader = $app['translation.loader'];
+			$loader = $app['translator.loader'];
 
-			// When registering the translator component, we'll need to set the default
+			// When registering the translation component, we'll need to set the default
 			// locale as well as the fallback locale. So, we'll grab the application
 			// configuration so we can easily get both of these values from there.
 			$locale = $app['config']->get('app.locale');
@@ -128,10 +153,11 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	/**
 	 * Bootstrap the application events.
 	 *
-     * @param  \Illuminate\Routing\Router  $router
+     * @param \Illuminate\Routing\Router  $router
+	 * @param \Simexis\MultiLanguage\Manager $manager
 	 * @return void
 	 */
-    public function boot(Router $router)
+    public function boot(Router $router, Manager $manager)
     { 
         $viewPath = __DIR__.'/resources/views';
         $this->loadViewsFrom($viewPath, 'multilanguage');
@@ -142,7 +168,7 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 		$this->publishes([
 			realpath(__DIR__.'/migrations') => database_path('migrations'),
 		]);
-        
+
 		//if tables exists
 		if($this->checkTablesExists()) {
 			$config = $this->app['config']->get('multilanguage.route', []);
@@ -165,7 +191,14 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	 */
 	public function provides()
 	{
-		return ['translator', 'translation.loader', 'translation.provider', 'translation.provider.entry'];
+		return [
+			'translator', 
+			'translator.loader', 
+			'translator.provider', 
+			'translator.provider.entry', 
+			'translator.manager', 
+			'translator.fileloader'
+		];
 	}
 
 	/**
@@ -179,7 +212,8 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 		if(!is_null($check))
 			return $check;
 		try {
-			return $check = DB::table('languages')->exists() && DB::table('language_entries')->exists();
+			DB::table('languages')->exists() && DB::table('language_entries')->exists();
+			return $check = true;
 		} catch(\Exception $e) {
 			return $check = false;
 		}

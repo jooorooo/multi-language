@@ -15,7 +15,6 @@ class CreateLanguageEntriesTable extends Migration {
 			$table->engine = 'InnoDB';
 			$table->increments('id');
             $table->char(config('multilanguage.locale_key'), 2)->index('idx_locale');
-			$table->string('namespace', 150)->default('*')->index('idx_namespace');
 			$table->string('group', 150)->index('idx_group');
 			$table->string('item', 150)->index('idx_item');
 			$table->text('text');

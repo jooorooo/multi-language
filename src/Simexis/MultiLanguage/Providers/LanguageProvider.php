@@ -2,24 +2,9 @@
 
 namespace Simexis\MultiLanguage\Providers;
 
+use Simexis\MultiLanguage\Models\Language;
+
 class LanguageProvider {
-
-	/**
-	 *	The Eloquent language model.
-	 *	@var string
-	 */
-	protected $model = 'Simexis\MultiLanguage\Models\Language';
-
-	/**
-	 * Create a new Eloquent Language provider.
-	 *
-	 * @param  string  $model
-	 * @return void
-	 */
-	public function __construct($model = null)
-	{
-		$this->setModel($model);
-	}
 
 	/**
 	 * Find the language by ID.
@@ -159,19 +144,7 @@ class LanguageProvider {
 	 */
 	public function createModel()
 	{
-		$class = '\\'.ltrim($this->model, '\\');
-
-		return new $class;
+		return new Language;
 	}
 
-	/**
-	 * Sets a new model class name to be used at
-	 * runtime.
-	 *
-	 * @param  string  $model
-	 */
-	public function setModel($model = null)
-	{
-		$this->model = $model ?: $this->model;
-	}
 }

@@ -2,24 +2,9 @@
 
 namespace Simexis\MultiLanguage\Providers;
 
+use Simexis\MultiLanguage\Models\LanguageEntry;
+
 class LanguageEntryProvider {
-
-	/**
-	 *	The Eloquent language entry model.
-	 *	@var string
-	 */
-	protected $model = 'Simexis\MultiLanguage\Models\LanguageEntry';
-
-	/**
-	 * Create a new Eloquent LangEntry provider.
-	 *
-	 * @param  string  $model
-	 * @return void
-	 */
-	public function __construct($model = null)
-	{
-		$this->setModel($model);
-	}
 
 	/**
 	 * Find the language entry by ID.
@@ -82,7 +67,6 @@ class LanguageEntryProvider {
 				$query
 					->from("$table as e")
 					->where($key, '=', $target->{$key})
-					->whereRaw("(e.namespace = $table.namespace OR (e.namespace IS NULL AND $table.namespace IS NULL))")
 					->whereRaw("e.group = $table.group")
 					->whereRaw("e.item = $table.item")
 					;
@@ -120,31 +104,35 @@ class LanguageEntryProvider {
 		}
 		// Transform the lines into a flat dot array:
 		$lines = array_dot($lines);
+		$save = $replace = 0;
 		foreach ($lines as $item => $text) {
 			// Check if the entry exists in the database:
 			$entry = $this
 				->createModel()
 				->newQuery()
-				->where('namespace', '=', $namespace)
 	      ->where('group', '=', $group)
 	      ->where('item', '=', $item)
 	      ->where($key, '=', $language->{$key})
 	      ->first();
 
-	    // If the entry already exists, we update the text:
-	    if ($entry) {
-	    	$entry->updateText($text, $isDefault);
-	    }
-	    // The entry doesn't exist:
-	    else {
-	    	$entry = $this->createModel();
-	    	$entry->namespace = $namespace;
-		    $entry->group = $group;
-		    $entry->item = $item;
-		    $entry->text = $text;
-		    $language->entries()->save($entry);
-	    }
+			// If the entry already exists, we update the text:
+			if ($entry) {
+				$u = $entry->updateText($text, $isDefault);
+				if($u)
+					$replace++;
+			}
+			// The entry doesn't exist:
+			else {
+				$entry = $this->createModel();
+				$entry->group = $group;
+				$entry->item = $item;
+				$entry->text = $text;
+				$s = $language->entries()->save($entry);
+				if($s)
+					$save++;
+			}
 		}
+		return [$save, $replace];
 	}
 
 	/**
@@ -154,19 +142,7 @@ class LanguageEntryProvider {
 	 */
 	public function createModel()
 	{
-		$class = '\\'.ltrim($this->model, '\\');
-
-		return new $class;
+		return new LanguageEntry;
 	}
 
-	/**
-	 * Sets a new model class name to be used at
-	 * runtime.
-	 *
-	 * @param  string  $model
-	 */
-	public function setModel($model = null)
-	{
-		$this->model = $model ?: $this->model;
-	}
 }

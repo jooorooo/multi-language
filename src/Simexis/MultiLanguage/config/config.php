@@ -39,23 +39,6 @@ return array(
 		'timeout'		=>	60,					// minutes
 	),
 
-	/*
-	|--------------------------------------------------------------------------
-	| Language
-	|--------------------------------------------------------------------------
-	|
-	| Configuration specific to the language management component. You may extend
-	| the default models or implement their corresponding interfaces if you need to.
-	|
-	*/
-	'language'				=>	array(
-		'model' 	=>	'Simexis\MultiLanguage\Models\Language',
-	),
-
-	'language_entry'	=>	array(
-		'model' 	=>	'Simexis\MultiLanguage\Models\LanguageEntry',
-	),
-
     /*
     |--------------------------------------------------------------------------
     | Locale key

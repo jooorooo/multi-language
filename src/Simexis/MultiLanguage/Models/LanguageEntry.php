@@ -34,7 +34,7 @@ class LanguageEntry extends Model {
   public function original($defaultLanguage)
   {
     if ($this->exists && $defaultLanguage && $defaultLanguage->exists) {
-      return $defaultLanguage->entries()->where('namespace', '=', $this->namespace)->where('group', '=', $this->group)->where('item', '=', $this->item)->first();
+      return $defaultLanguage->entries()->where('group', '=', $this->group)->where('item', '=', $this->item)->first();
     } else {
       return NULL;
     }
@@ -70,8 +70,7 @@ class LanguageEntry extends Model {
   {
 	  $key = config('multilanguage.locale_key');
     if ($this->id) {
-      LanguageEntry::where('namespace', '=', $this->namespace)
-        ->where('group', '=', $this->group)
+      LanguageEntry::where('group', '=', $this->group)
         ->where('item', '=', $this->item)
         ->where($key, '!=', $this->{$key})
         ->update(array('unstable' => '1'));

@@ -23,7 +23,7 @@ class DatabaseLoader extends Loader implements LoaderInterface {
 		$namespace = $namespace ?: '*';
 		$language 	= $this->languageProvider->findByLocale($locale);
 		if ($language) {
-			$entries = $language->entries()->where('group', '=', $group)->where('namespace', '=', $namespace)->get();
+			$entries = $language->entries()->where('group', '=', $group)->get();
 			if ($entries) {
 				foreach($entries as $entry) {
 					array_set($langArray, $entry->item, $entry->text);

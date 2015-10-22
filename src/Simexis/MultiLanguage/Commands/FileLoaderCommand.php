@@ -6,8 +6,9 @@ use Illuminate\Filesystem\Filesystem;
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputArgument;
-use Simexis\MultiLanguage\Providers\LanguageProvider as LanguageProvider;
-use Simexis\MultiLanguage\Providers\LanguageEntryProvider as LanguageEntryProvider;
+use Simexis\MultiLanguage\Providers\LanguageProvider;
+use Simexis\MultiLanguage\Providers\LanguageEntryProvider;
+use Simexis\MultiLanguage\Loaders\FileLoader;
 
 class FileLoaderCommand extends Command {
 
@@ -28,11 +29,11 @@ class FileLoaderCommand extends Command {
 	/**
 	*  Create a new mixed loader instance.
 	*
-	*  @param  \Waavi\Lang\Providers\LanguageProvider        $languageProvider
-	*  @param  \Waavi\Lang\Providers\LanguageEntryProvider   $languageEntryProvider
-	*  @param  \Illuminate\Foundation\Application            $app
+	*  @param  \Simexis\MultiLanguage\Providers\LanguageProvider        $languageProvider
+	*  @param  \Simexis\MultiLanguage\Providers\LanguageEntryProvider   $languageEntryProvider
+	*  @param  \Simexis\MultiLanguage\Loaders\FileLoader            	$fileLoader
 	*/
-	public function __construct($languageProvider, $languageEntryProvider, $fileLoader)
+	public function __construct(LanguageProvider $languageProvider, LanguageEntryProvider $languageEntryProvider, FileLoader $fileLoader)
 	{
 		parent::__construct();
 		$this->languageProvider       = $languageProvider;

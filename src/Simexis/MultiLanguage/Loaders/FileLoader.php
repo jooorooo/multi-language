@@ -2,11 +2,12 @@
 
 namespace Simexis\MultiLanguage\Loaders;
 
+use Illuminate\Foundation\Application;
 use Illuminate\Translation\LoaderInterface;
 use Illuminate\Translation\FileLoader as LaravelFileLoader;
 use Simexis\MultiLanguage\Loaders\Loader;
-use Simexis\MultiLanguage\Providers\LanguageProvider as LanguageProvider;
-use Simexis\MultiLanguage\Providers\LanguageEntryProvider as LanguageEntryProvider;
+use Simexis\MultiLanguage\Providers\LanguageProvider;
+use Simexis\MultiLanguage\Providers\LanguageEntryProvider;
 
 class FileLoader extends Loader implements LoaderInterface {
 
@@ -24,7 +25,7 @@ class FileLoader extends Loader implements LoaderInterface {
 	 * 	@param 	\Waavi\Lang\Providers\LanguageEntryProvider		$languageEntryProvider
 	 *	@param 	\Illuminate\Foundation\Application  					$app
 	 */
-	public function __construct($languageProvider, $languageEntryProvider, $app)
+	public function __construct(LanguageProvider $languageProvider, LanguageEntryProvider $languageEntryProvider, Application $app)
 	{
 		parent::__construct($languageProvider, $languageEntryProvider, $app);
 		$this->laravelFileLoader = new LaravelFileLoader($app['files'], app()->langPath());
