@@ -21,6 +21,8 @@ class Manager {
     protected $fileLoader;
 	
 	private $locales;
+	
+	private $total_rows;
 
     public function __construct(LanguageProvider $provider, LanguageEntryProvider $entry, FileLoader $fileLoader)
     {
@@ -52,6 +54,17 @@ class Manager {
         //Set the default locale as the first one.
         return $this->locales = $this->getProviderModel()->orderBy(DB::raw('FIELD(' . config('multilanguage.locale_key') . ',"' . config('multilanguage.locale') . '") desc, id'),'asc')->get()->lists('name', config('multilanguage.locale_key'))->all();
     }
+
+	/**
+	 * Find the language by ISO.
+	 *
+	 * @param  string  $locale
+	 * @return Eloquent NULL in case no language entry was found.
+	 */
+	public function findByLocale($locale)
+	{
+		return $this->getProvider()->findByLocale($locale);
+	}
 	
 	public function getGroups($exclude = []) {
 		if(is_array(!$exclude))
@@ -146,7 +159,6 @@ class Manager {
 
 	public function clearTranslations() {
 		$files = new Filesystem();
-		$locales = $this->getLocales();
 		$arrays = [];
 		foreach($files->files(app()->langPath() . DIRECTORY_SEPARATOR . config('multilanguage.locale')) as $file) {
 			$group = pathinfo($file, PATHINFO_FILENAME);
@@ -168,4 +180,42 @@ class Manager {
 		return $model->delete();
 	}
 
+	public function getProgress($locale) {
+		if($locale != config('multilanguage.locale')) {
+			$total = $this->getEntryModel()->where(config('multilanguage.locale_key'),$locale)->where('locked', static::LOCKED)->count();
+		} else {
+			$total = $this->getEntryModel()->where(config('multilanguage.locale_key'),$locale)->count();
+		}
+		if(!$total)
+			return 0;
+		if(is_null($this->total_rows)) {
+			$files = new Filesystem();
+			$arrays = [];
+			foreach($files->files(app()->langPath() . DIRECTORY_SEPARATOR . config('multilanguage.locale')) as $file) {
+				$group = pathinfo($file, PATHINFO_FILENAME);
+				$translations = $this->fileLoader->load(config('multilanguage.local'), $group);
+				if ($translations && is_array($translations)) {
+					$arrays = array_merge($arrays, array_dot($translations, $group));
+				}
+			}
+			$this->total_rows = count($arrays);
+		}
+		return round(($total/$this->total_rows)*100, 2);
+	}
+
+	public function getProgressByGroup($locale, $group = null) {
+		if($locale != config('multilanguage.locale')) {
+			$total = $this->getEntryModel()->where(config('multilanguage.locale_key'),$locale)->where('group',$group)->where('locked', static::LOCKED)->count();
+		} else {
+			$total = $this->getEntryModel()->where(config('multilanguage.locale_key'),$locale)->where('group',$group)->count();
+		}
+		if(!$total)
+			return 0;
+		$translations = $this->fileLoader->load(config('multilanguage.local'), $group);
+		$total_rows = count(array_dot($translations, $group));
+		if(!$total_rows)
+			return 0;
+		return round(($total/$total_rows)*100, 2);
+	}
+	
 }

@@ -30,26 +30,17 @@ jQuery(document).ready(function($){
 				}, 300);
 			}
 		}
-	})/*.on('hidden', function(e, reason){
-		var locale = $(this).data('locale');
-		if(reason === 'save'){
-			$(this).removeClass('status-0').addClass('status-1');
-		}
-		if(reason === 'save' || reason === 'nochange') {
-			var $next = $(this).closest('tr').next().find('.editable.locale-'+locale);
-			setTimeout(function() {
-				$next.editable('show');
-			}, 300);
-		}
-	})*/;
+	});
 
 	$('.group-select').on('change', function(){
 		window.location.href = $(this).val();
 	});
 
 	$('.form-global-action').on('ajax:success', function (e, data) {
-		$('div.success-import strong.counter').text(data.counter);
-		$('div.success-import').slideDown();
+		$('div.success-' + data.action + ' strong.counter').text(data.counter);
+		$('div.success-' + data.action + '').slideDown();
 	});
+	
+	$('[data-toggle="tooltip"]').tooltip();
 	
 });

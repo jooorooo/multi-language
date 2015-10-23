@@ -6,12 +6,16 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Lang;
 use Simexis\MultiLanguage\Manager;
+use Simexis\MultiLanguage\Request\LanguageRequest;
 use Simexis\MultiLanguage\Providers\LanguageProvider;
 use Simexis\MultiLanguage\Providers\LanguageEntryProvider;
 use Simexis\MultiLanguage\Commands\FileLoaderCommand;
 
 class MultilanguageController extends Controller {
+	
+	protected $protected_language = 'en';
 	
     /** @var \Simexis\MultiLanguage\Manager */
     protected $manager;
@@ -19,34 +23,143 @@ class MultilanguageController extends Controller {
     public function __construct(Manager $manager)
     {
 		$this->manager = $manager;
+		$this->protected_language = config('multilanguage.locale');
     }
 
-    public function getIndex($group = null)
+    public function getIndex()
     {	
+        $locales = $this->manager->getProviderModel()->get()->map(function($item) {
+			$item->progress = $this->manager->getProgress($item->{config('multilanguage.locale_key')});
+			return $item;
+		});
+		
+		return view('multilanguage::index')
+			->with('locales', $locales)
+			->with('protected', $this->protected_language);
+    }
+	
+	public function getLanguageCreate() {
+		
+		return view('multilanguage::edit')
+			->with('locale', null)
+			->with('protected', null);
+	}
+	
+	public function postLanguageCreate(LanguageRequest $request) {
+		try {
+			$this->manager->getProviderModel()->create([
+				config('multilanguage.locale_key') => trim(strtolower($request->get(config('multilanguage.locale_key')))),
+				'name' => $request->get('name')
+			]);
+			return redirect()->action('\Simexis\MultiLanguage\Controllers\MultilanguageController@getIndex')
+				->with([ 'message' => Lang::get('multilanguage::multilanguage.success.language_successfully_created'), 'type' => 'success' ]);
+		} catch(Exception $e) {
+			return redirect()->action('\Simexis\MultiLanguage\Controllers\MultilanguageController@getLanguageCreate')
+				->with([ 'message' => $e->getMessage(), 'type' => 'danger' ])
+				->withInput();
+		}
+	}
+	
+	public function getLanguageEdit($locale) {
+		$locale = $this->manager->findByLocale($locale);
+		if(!$locale)
+			return redirect()->action('\Simexis\MultiLanguage\Controllers\MultilanguageController@getIndex')
+				->with([ 'message' => Lang::get('multilanguage::multilanguage.errors.language_not_found'), 'type' => 'danger' ]);
+
+		return view('multilanguage::edit')
+			->with('locale', $locale)
+			->with('protected', $this->protected_language);
+		
+	}
+	
+	public function postLanguageEdit(LanguageRequest $request, $locale) {
+		$locale = $this->manager->findByLocale($locale);
+		if(!$locale)
+			return redirect()->action('\Simexis\MultiLanguage\Controllers\MultilanguageController@getIndex')
+				->with([ 'message' => Lang::get('multilanguage::multilanguage.errors.language_not_found'), 'type' => 'danger' ]);
+		
+		try {
+			$locale->update([
+				config('multilanguage.locale_key') => $locale->{config('multilanguage.locale_key')} == $this->protected_language ? $this->protected_language : trim(strtolower($request->get(config('multilanguage.locale_key')))),
+				'name' => $request->get('name')
+			]);
+			return redirect()->action('\Simexis\MultiLanguage\Controllers\MultilanguageController@getIndex')
+				->with([ 'message' => Lang::get('multilanguage::multilanguage.success.language_successfully_edited'), 'type' => 'success' ]);
+		} catch(Exception $e) {
+			return redirect()->action('\Simexis\MultiLanguage\Controllers\MultilanguageController@getLanguageEdit', [$locale->{config('multilanguage.locale_key')}])
+				->with([ 'message' => $e->getMessage(), 'type' => 'danger' ])
+				->withInput();
+		}		
+		
+	}
+	
+	public function getLanguageDelete($locale) {
+		$locale = $this->manager->findByLocale($locale);
+		if(!$locale)
+			return redirect()->action('\Simexis\MultiLanguage\Controllers\MultilanguageController@getIndex')
+				->with([ 'message' => Lang::get('multilanguage::multilanguage.errors.language_not_found'), 'type' => 'danger' ]);
+		if(strtolower($locale->{config('multilanguage.locale_key')}) == $this->protected_language)
+			return redirect()->action('\Simexis\MultiLanguage\Controllers\MultilanguageController@getIndex')
+				->with([ 'message' => Lang::get('multilanguage::multilanguage.errors.delete_protected'), 'type' => 'danger' ]);
+		
+		try {
+			$locale->delete();
+			return redirect()->action('\Simexis\MultiLanguage\Controllers\MultilanguageController@getIndex')
+				->with([ 'message' => Lang::get('multilanguage::multilanguage.success.delete_language_success'), 'type' => 'success' ]);
+			
+		} catch(Exception $e) {
+			return redirect()->action('\Simexis\MultiLanguage\Controllers\MultilanguageController@getIndex')
+				->with([ 'message' => $e->getMessage(), 'type' => 'danger' ]);
+		}
+		
+	}
+	
+	public function getTranslations($locale) {
+		$locale = $this->manager->findByLocale($locale);
+		if(!$locale)
+			return redirect()->action('\Simexis\MultiLanguage\Controllers\MultilanguageController@getIndex')
+				->with([ 'message' => Lang::get('multilanguage::multilanguage.errors.language_not_found'), 'type' => 'danger' ]);
+		
+        $groups = $this->manager->getGroups(config('multilanguage.exclude_groups'));
+		$progress = [];
+		foreach($groups AS $group) {
+			$progress[$group] = $this->manager->getProgressByGroup($locale->{config('multilanguage.locale_key')}, $group);
+		}
+		
+		return view('multilanguage::groups')
+			->with('groups', $groups)
+			->with('progress', $progress)
+			->with('locale', $locale);
+		
+	}
+
+    public function getView($locale, $group)
+    {	
+		$locale = $this->manager->findByLocale($locale);
+		if(!$locale)
+			return redirect()->action('\Simexis\MultiLanguage\Controllers\MultilanguageController@getIndex')
+				->with([ 'message' => Lang::get('multilanguage::multilanguage.errors.language_not_found'), 'type' => 'danger' ]);
+				
         $locales = $this->manager->getLocales();
         $groups = $this->manager->getGroups(config('multilanguage.exclude_groups'));
-        
+		
 		$allTranslations = $this->manager->getItems($group);
 		$defaults = $this->manager->loadDefault($group); 
-		$numTranslations = $allTranslations->count();
-		$numChanged = $allTranslations->where('locked', Manager::LOCKED)->count();
+		$numTranslations = $allTranslations->where(config('multilanguage.locale_key'), config('multilanguage.locale'))->count();
+		$numChanged = $allTranslations->where(config('multilanguage.locale_key'), $locale->{config('multilanguage.locale_key')})->where('locked', Manager::LOCKED)->count();
 
         $translations = $this->manager->makeTree($allTranslations);
 
-		return view('multilanguage::index')
+		return view('multilanguage::group_edit')
 			->with('translations', $translations)
 			->with('locales', $locales)
+			->with('locale', $locale)
 			->with('groups', $groups)
 			->with('defaults', $defaults)
 			->with('group', $group)
 			->with('numTranslations', $numTranslations)
 			->with('numChanged', $numChanged)
 			->with('editUrl', action('\Simexis\MultiLanguage\Controllers\MultilanguageController@postEdit', [$group]));
-    }
-
-    public function getView($group)
-    {
-        return $this->getIndex($group);
     }
 
     public function postEdit(Request $request, $group)
@@ -102,10 +215,13 @@ class MultilanguageController extends Controller {
 			case 'clear' === $action:
 				$counter = $this->manager->clearTranslations();
 			break;
+			default:		
+				return redirect()->action('\Simexis\MultiLanguage\Controllers\MultilanguageController@getIndex')
+						->with([ 'message' => Lang::get('multilanguage::multilanguage.errors.wrong_action'), 'type' => 'danger' ]);
+			break;
 		}
-		
-
-        return ['status' => 'ok', 'counter' => $counter, 'action' => $action];
+		return redirect()->action('\Simexis\MultiLanguage\Controllers\MultilanguageController@getIndex')
+				->with([ 'message' => Lang::get('multilanguage::multilanguage.form_actions_messages.' . $action, ['counter' => is_numeric($counter) ? $counter : 0]), 'type' => 'info' ]);
     }
 	
 }
