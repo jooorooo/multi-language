@@ -156,12 +156,7 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
         $this->app['url'] = $this->app->share(function ($app) {
             $routes = $app['router']->getRoutes();
 
-			$app['events']->listen('router.before', function($request, $response) {
-				$locales = app('translator.manager')->getLocales();
-				if(array_key_exists($request->segment(1), $locales)) {
-					$this->serverModify($request, $locales);
-				}
-			});
+			$this->beforeRoute();
 			
             // The URL generator needs the route collection that exists on the router.
             // Keep in mind this is an object, so we're passing by references here
@@ -188,8 +183,16 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
             return $url;
         });
 		
-		//var_dump($this->app['url']->route('installer::finish'));
     }
+	
+	private function beforeRoute() {
+		$this->app['events']->listen('router.before', function($request, $response) {
+			$locales = app('translator.manager')->getLocales();
+			if(array_key_exists($request->segment(1), $locales)) {
+				$this->serverModify($request, $locales);
+			}
+		});
+	}
 	
 	private function serverModify($request, $locales) {
 		$this->app->setLocale($request->segment(1));

@@ -123,7 +123,7 @@ return array(
     */
     'route' => [
         'prefix' => 'multilanguage',
-        //'middleware' => 'auth',
+        'middleware' => 'auth',
     ],
 
 	/**

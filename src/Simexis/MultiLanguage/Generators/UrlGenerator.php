@@ -6,25 +6,6 @@ use Illuminate\Routing\UrlGenerator AS BaseUrlGenerator;
 
 class UrlGenerator extends BaseUrlGenerator
 {
-	
-    /**
-     * Get the URL to a named route.
-     *
-     * @param  string  $name
-     * @param  mixed   $parameters
-     * @param  bool  $absolute
-     * @return string
-     *
-     * @throws \InvalidArgumentException
-     */
-    public function route($name, $parameters = [], $absolute = true)
-    {
-        if (! is_null($route = $this->routes->getByName($name))) {
-            return $this->toRoute($route, $parameters, $absolute);
-        }
-
-        throw new InvalidArgumentException("Route [{$name}] not defined.");
-    }
 
     /**
      * Get the URL for a given route instance.
@@ -46,6 +27,39 @@ class UrlGenerator extends BaseUrlGenerator
         ), $parameters)), $this->dontEncode);
 		
         return $absolute ? $uri : '/'.ltrim(str_replace($root, '', $uri), '/');
+    }
+
+    /**
+     * Generate an absolute URL to the given path.
+     *
+     * @param  string  $path
+     * @param  mixed  $extra
+     * @param  bool|null  $secure
+     * @return string
+     */
+    public function to($path, $extra = [], $secure = null)
+    {
+        // First we will check if the URL is already a valid URL. If it is we will not
+        // try to generate a new one but will simply return the URL as is, which is
+        // convenient since developers do not always have to check if it's valid.
+        if ($this->isValidUrl($path)) {
+            return $path;
+        }
+
+        $scheme = $this->getScheme($secure);
+
+        $extra = $this->formatParameters($extra);
+
+        $tail = implode('/', array_map(
+            'rawurlencode', (array) $extra)
+        );
+
+        // Once we have the scheme we will compile the "tail" by collapsing the values
+        // into a single string delimited by slashes. This just makes it convenient
+        // for passing the array of parameters to this URL as a list of segments.
+        $root = $this->getRootUrl($scheme);
+
+        return $this->trimUrl($root, $this->uriWithLocale($path), $tail);
     }
 	
 	private function getManager() {
@@ -74,7 +88,8 @@ class UrlGenerator extends BaseUrlGenerator
 		$uri = substr($uri, 0, 1) == '/' ? substr($uri, 1) : $uri;
 		$segments = explode('/', $uri);
 		$newUri = "/{$locale}/{$uri}";
-		if (count($segments) && strlen($segments[0]) == 2) {
+		$locales = $this->getLocales();
+		if (count($segments) && in_array(strtolower($segments[0]), $locales)) {
 			$newUri = "/{$locale}";
 			for($i = 1; $i < sizeof($segments); $i++) {
 				$newUri .= "/{$segments[$i]}";
