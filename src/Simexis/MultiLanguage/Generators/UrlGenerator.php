@@ -89,9 +89,11 @@ class UrlGenerator extends BaseUrlGenerator
 		$segments = explode('/', $uri);
 		$newUri = "/{$locale}/{$uri}";
 		$locales = $this->getLocales();
-		if (count($segments) && in_array(strtolower($segments[0]), $locales)) {
+		if (count($segments) && array_key_exists(strtolower($segments[0]), $locales)) {
 			$newUri = "/{$locale}";
-			for($i = 1; $i < sizeof($segments); $i++) {
+			for($i = 0; $i < sizeof($segments); $i++) {
+				if(array_key_exists(strtolower($segments[$i]), $locales)) 
+					continue;
 				$newUri .= "/{$segments[$i]}";
 			}
 		}
