@@ -9,6 +9,9 @@ use Simexis\MultiLanguage\Providers\LanguageEntryProvider as LanguageEntryProvid
 
 class DatabaseLoader extends Loader implements LoaderInterface {
 
+	private $language = [];
+	private $entries = [];
+	
 	/**
 	 * Load the messages strictly for the given locale.
 	 *
@@ -21,14 +24,14 @@ class DatabaseLoader extends Loader implements LoaderInterface {
 	{
 		$langArray 	= array();
 		$namespace = $namespace ?: '*';
-		$language 	= $this->languageProvider->findByLocale($locale);
+		$language 	= $this->getLanguage($locale);
 		if ($language) {
-			if(is_object($entries = $language->entries()->where('group', '=', $group)->get()) && $entries->count()) {
+			if(is_object($entries = $this->getLanguageEntry($locale, $group)) && $entries->count()) { 
 				foreach($entries as $entry) {
 					array_set($langArray, $entry->item, $entry->text);
 				}
-			} else if($locale !== config('multilanguage.locale') && !is_null($language	= $this->languageProvider->findByLocale(config('multilanguage.locale')))) {
-				$entries = $language->entries()->where('group', '=', $group)->get();
+			} else if($locale !== $this->getDefaultLocale() && !is_null($language = $this->getLanguage($this->getDefaultLocale()))) {
+				$entries = $this->getLanguageEntry($this->getDefaultLocale(), $group);
 				foreach($entries as $entry) {
 					array_set($langArray, $entry->item, $entry->text);
 				}
@@ -36,5 +39,18 @@ class DatabaseLoader extends Loader implements LoaderInterface {
 		}
 		return $langArray;
 	}
+
+    protected function getLanguage($locale) {
+        if(!array_key_exists($locale, $this->language))
+            $this->language[$locale] = $this->languageProvider->findByLocale($locale);
+        return $this->language[$locale];
+    }
+
+    protected function getLanguageEntry($locale, $group) {
+        if(!isset( $this->entries[$locale][$group] ))
+            $this->entries[$locale][$group] = $this->getLanguage($locale)
+                ->entries()->whereGroup($group)->get();
+        return $this->entries[$locale][$group];
+    }
 	
 }
