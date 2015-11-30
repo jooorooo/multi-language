@@ -23,14 +23,14 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	 */
 	protected $defer = false;
 	
-	private $commands = [
+	protected $commands = [
 		'AppendCommand',
 		'ReplaceCommand',
 		'TruncateCommand',
 		'ClearCommand',
 	];
 	
-	private static $NAMESPACE = '\\Simexis\\MultiLanguage\\Commands\\';
+	protected static $NAMESPACE = '\\Simexis\\MultiLanguage\\Commands\\';
 
     /**
 	 * Register the service provider.
@@ -185,7 +185,7 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 		
     }
 	
-	private function beforeRoute() {
+	protected function beforeRoute() {
 		$this->app['events']->listen('router.before', function($request, $response) {
 			$locales = app('translator.manager')->getLocales();
 			if(array_key_exists($request->segment(1), $locales)) {
@@ -194,7 +194,7 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 		});
 	}
 	
-	private function serverModify($request, $locales) {
+	protected function serverModify($request, $locales) {
 		$this->app->setLocale($request->segment(1));
 		$path = substr($request->path(), 1) == '/' ? substr($request->path(), 0, 1) : $request->path();
 		if(array_key_exists(strtolower($path), $locales)) {
@@ -313,7 +313,7 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	 *
 	 * @return array
 	 */
-	private function checkTablesExists()
+	protected function checkTablesExists()
 	{
 		static $check;
 		if(!is_null($check))
