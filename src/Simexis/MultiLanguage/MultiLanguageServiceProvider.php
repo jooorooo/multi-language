@@ -66,7 +66,7 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	 */
 	protected function registerLoader()
 	{ 
-		$this->app->bindShared('translator.loader', function($app)
+		$this->app->singleton('translator.loader', function($app)
 		{ 
 			$languageProvider 	= new LanguageProvider();
 			$langEntryProvider 	= new LanguageEntryProvider();
@@ -79,15 +79,15 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 			if(!$this->checkTablesExists())
 				$mode = 'filesystem';
 			
-			$this->app->bindShared('translator.provider', function($app) use($languageProvider){
+			$this->app->singleton('translator.provider', function($app) use($languageProvider){
 				return $languageProvider;
 			});
 			
-			$this->app->bindShared('translator.provider.entry', function($app) use($langEntryProvider){
+			$this->app->singleton('translator.provider.entry', function($app) use($langEntryProvider){
 				return $langEntryProvider;
 			});
 			
-			$this->app->bindShared('translator.fileloader', function($app) use($languageProvider, $langEntryProvider){
+			$this->app->singleton('translator.fileloader', function($app) use($languageProvider, $langEntryProvider){
 				return new FileLoader($languageProvider, $langEntryProvider, $app);
 			});
 			
@@ -112,7 +112,7 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	 */
 	public function registerManager()
 	{
-		$this->app->bindShared('translator.manager', function($app)
+		$this->app->singleton('translator.manager', function($app)
 		{
 			$provider = $app['translator.provider'];
 			$entry = $app['translator.provider.entry'];
@@ -131,7 +131,7 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	 */
 	public function registerTranslator()
 	{
-		$this->app->bindShared('translator', function($app)
+		$this->app->singleton('translator', function($app)
 		{
 			$loader = $app['translator.loader'];
 
@@ -236,7 +236,7 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	 */
 	public function registerRender()
 	{
-		$this->app->bindShared('Simexis\MultiLanguage\Helpers\Render', function ($app) {
+		$this->app->singleton('Simexis\MultiLanguage\Helpers\Render', function ($app) {
             return new Render($app);
         });
 		
@@ -273,6 +273,8 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 			$config = $this->app['config']->get('multilanguage.route', []);
 			if(!isset($config['namespace']))
 				$config['namespace'] = 'Simexis\MultiLanguage\Controllers';
+			if(!isset($config['middleware']) && version_compare(app()->version(), '5.2', '>=')) 
+				$config['middleware'] = ['web'];
 
 			$router->group($config, function($router)
 			{
