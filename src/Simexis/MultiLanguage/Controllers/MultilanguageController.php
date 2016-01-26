@@ -162,42 +162,56 @@ class MultilanguageController extends Controller {
 			->with('editUrl', action('\Simexis\MultiLanguage\Controllers\MultilanguageController@postEdit', [$group]));
     }
 
-    public function postEdit(Request $request, $group)
+    public function postEdit(Request $request, $groupnamespace)
     {
-        if(!in_array($group, (array)config('multilanguage.exclude_groups'))) {
-            $name = $request->get('name');
-            $value = $request->get('value');
+		list($namespace, $group) = explode('.', $groupnamespace);
+		
+		if(is_array(config('multilanguage.exclude')) && array_key_exists($namespace, config('multilanguage.exclude')))
+            return ['status' => 'error', 'message' => Lang::get('multilanguage::errors.namespace_is_exclude')];
+		
+		$groups = $this->manager->getGroups(config('translation.exclude'));
+        if(!isset($groups[$groupnamespace]))
+            return ['status' => 'error', 'message' => Lang::get('multilanguage::errors.group_not_found')];
 
-            list($locale, $item) = explode('|', $name, 2);
-			
-			$translation = $this->manager->firstEntryOrNew([
-                config('multilanguage.locale_key') => $locale,
-                'group' => $group,
-                'item' => $item,
-            ]);
-			
-			$defaults = $this->manager->loadDefault($group); 
-			
-			
-            $translation->text = (string) $value ?: '';
-            $translation->locked = isset($defaults[$item]) ? ($translation->text != $defaults[$item] ? Manager::LOCKED : Manager::UNLOCKED) : Manager::LOCKED;
-			
-			if(!$translation->text) {
-				try {
-					$translation->delete();
-					return ['status' => 'delete'];
-				} catch(Exception $e) {
-					return ['status' => 'error', 'message' => $e->getMessage()];
-				}
-			}
-			
+        if(is_array(config('translation.exclude.'.$namespace)) && in_array($group, config('translation.exclude.'.$namespace)))
+            return ['status' => 'error', 'message' => Lang::get('multilanguage::errors.group_is_exclude')];
+		
+		$name = $request->get('name');
+		$value = $request->get('value');
+
+		list($locale, $item) = explode('|', $name, 2);
+
+        $items = $this->manager->loadDefault($groupnamespace);
+        if(!isset($items[$item]))
+            return ['status' => 'error', 'message' => Lang::get('multilanguage::errors.item_not_found')];
+		
+		$translation = $this->manager->firstEntryOrNew([
+            'namespace' => $namespace,
+			config('multilanguage.locale_key') => $locale,
+			'group' => $group,
+			'item' => $item,
+		]);
+		
+		$defaults = $this->manager->loadDefault($groupnamespace); 
+		
+		$translation->text = (string) $value ?: '';
+		$translation->locked = isset($defaults[$item]) ? ($translation->text != $defaults[$item] ? Manager::LOCKED : Manager::UNLOCKED) : Manager::LOCKED;
+		
+		if(!$translation->text) {
 			try {
-				$translation->save();
-				return ['status' => 'save', 'locked' => $translation->locked];
+				$translation->delete();
+				return ['status' => 'delete'];
 			} catch(Exception $e) {
 				return ['status' => 'error', 'message' => $e->getMessage()];
 			}
-        }
+		}
+		
+		try {
+			$translation->save();
+			return ['status' => 'save', 'locked' => $translation->locked];
+		} catch(Exception $e) {
+			return ['status' => 'error', 'message' => $e->getMessage()];
+		}
     }
 
     public function postImport(Request $request)

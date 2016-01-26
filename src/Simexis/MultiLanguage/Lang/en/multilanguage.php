@@ -13,7 +13,11 @@ return [
 	'errors' => [
 		'language_not_found' => 'Language not found!',
 		'delete_protected' => 'You cannot delete the system language!',
-		'wrong_action' => 'Wrong action!'
+		'wrong_action' => 'Wrong action!',
+		'namespace_is_exclude' => 'Namespace is excluded!',
+		'group_not_found' => 'Group not found!',
+		'group_is_exclude' => 'Group is excluded!',
+		'item_not_found' => 'Item not found!',
 	],
 	
 	'success' => [

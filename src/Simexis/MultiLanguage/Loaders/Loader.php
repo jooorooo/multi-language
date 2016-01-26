@@ -145,7 +145,7 @@ class Loader implements LoaderInterface {
 	public function load($locale, $group, $namespace = null)
 	{
 		$namespace = $namespace ?: '*';
-		$cacheKey = "waavi|translation|$locale.$group.$namespace";
+		$cacheKey = "multilanguage|translation|$locale.$group.$namespace";
 		$lines 		= $this->cacheEnabled && $this->app['cache']->has($cacheKey) ?
 								$this->app['cache']->get($cacheKey) :
 								$this->loadRaw($locale, $group, $namespace);
@@ -201,5 +201,14 @@ class Loader implements LoaderInterface {
 		{
 			$this->laravelFileLoader->addNamespace($namespace, $hint);
 		}
+	}
+	
+	/**
+	 * Get registered namespaces
+	 *
+	 * @return array
+	 */
+	public function getHints() {
+		return $this->hints;
 	}
 }

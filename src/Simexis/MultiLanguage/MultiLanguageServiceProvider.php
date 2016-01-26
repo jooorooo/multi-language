@@ -130,7 +130,7 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	 * @return void
 	 */
 	public function registerTranslator()
-	{
+	{ 
 		$this->app->singleton('translator', function($app)
 		{
 			$loader = $app['translator.loader'];
@@ -143,7 +143,7 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 			$trans = new Translator($loader, $locale);
 
 			return $trans;
-		});
+		}); 
 	}
 
     /**
