@@ -187,7 +187,9 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 	
 	protected function beforeRoute() {
 		$this->app['events']->listen('router.before', function($request, $response) {
-			$locales = app('translator.manager')->getLocales();
+			$locales = app('translator.manager')->getLocales(); 
+			if(!$locales)
+				$locales = [app()->getLocale() => app()->getLocale()];
 			if(array_key_exists($request->segment(1), $locales)) {
 				$this->serverModify($request, $locales);
 			}
