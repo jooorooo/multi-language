@@ -3,7 +3,7 @@
 namespace Simexis\MultiLanguage;
 
 use Illuminate\Routing\Router;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Translation\TranslationServiceProvider;
 use Simexis\MultiLanguage\Facades\Translator;
 use Simexis\MultiLanguage\Loaders\FileLoader;
@@ -321,7 +321,7 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 		if(!is_null($check))
 			return $check;
 		try {
-			DB::table('languages')->exists() && DB::table('language_entries')->exists();
+			$check = Schema::hasTable('languages') && Schema::hasTable('language_entries');
 			return $check = true;
 		} catch(\Exception $e) {
 			return $check = false;

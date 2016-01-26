@@ -4,6 +4,7 @@ namespace Simexis\MultiLanguage;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Facades\Schema;
 use Simexis\MultiLanguage\Loaders\FileLoader;
 use Simexis\MultiLanguage\Providers\LanguageProvider;
 use Simexis\MultiLanguage\Providers\LanguageEntryProvider;
@@ -51,7 +52,9 @@ class Manager {
     {
 		if(!is_null($this->locales))
 			return $this->locales;
-        //Set the default locale as the first one.
+        //Set the default locale as the first one. 
+		if(!$this->checkTablesExists())
+			return $this->locales = [];
         return $this->locales = $this->getProviderModel()->orderBy(DB::raw('FIELD(' . config('multilanguage.locale_key') . ',"' . config('multilanguage.locale') . '") desc, id'),'asc')->get()->lists('name', config('multilanguage.locale_key'))->all();
     }
 
@@ -216,6 +219,24 @@ class Manager {
 		if(!$total_rows)
 			return 0;
 		return round(($total/$total_rows)*100, 2);
+	}
+
+	/**
+	 * Get the services provided by the provider.
+	 *
+	 * @return array
+	 */
+	public function checkTablesExists()
+	{
+		static $check;
+		if(!is_null($check))
+			return $check;
+		try {
+			$check = Schema::hasTable('languages') && Schema::hasTable('language_entries');
+			return $check;
+		} catch(\Exception $e) {
+			return $check = false;
+		}
 	}
 	
 }
