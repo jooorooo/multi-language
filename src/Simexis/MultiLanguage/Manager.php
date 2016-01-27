@@ -6,6 +6,8 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\ConnectionResolver;
 use Simexis\MultiLanguage\Loaders\FileLoader;
 use Simexis\MultiLanguage\Providers\LanguageProvider;
 use Simexis\MultiLanguage\Providers\LanguageEntryProvider;
@@ -34,6 +36,7 @@ class Manager {
 		foreach(app('translator.loader')->getHints() AS $namespace => $path) {
 			$this->fileLoader->addNamespace($namespace, $path);
 		}
+		$this->setConnectionResolver();
     }
 
 	public function getProvider() {
@@ -53,7 +56,7 @@ class Manager {
 	}
 
     public function getLocales()
-    {
+    { 
 		if(!is_null($this->locales))
 			return $this->locales;
         //Set the default locale as the first one. 
@@ -61,6 +64,17 @@ class Manager {
 			return $this->locales = [app()->getLocale() => app()->getLocale()];
         return $this->locales = $this->getProviderModel()->orderBy(DB::raw('FIELD(' . config('multilanguage.locale_key') . ',"' . config('multilanguage.locale') . '") desc, id'),'asc')->get()->lists('name', config('multilanguage.locale_key'))->all();
     }
+	
+	private function setConnectionResolver() {
+		if($this->checkTablesExists() && is_null(Model::getConnectionResolver())) {
+			$res = new ConnectionResolver();
+			DB::pretend(function($db) use($res) {
+				$res->addConnection(config('database.default'), $db);
+				$res->setDefaultConnection(config('database.default'));
+			});
+			Model::setConnectionResolver($res);
+		}
+	}
 
 	/**
 	 * Find the language by ISO.

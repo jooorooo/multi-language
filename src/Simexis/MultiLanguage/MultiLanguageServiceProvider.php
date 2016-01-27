@@ -3,16 +3,17 @@
 namespace Simexis\MultiLanguage;
 
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Translation\TranslationServiceProvider;
+use Simexis\MultiLanguage\Helpers\Render;
 use Simexis\MultiLanguage\Facades\Translator;
 use Simexis\MultiLanguage\Loaders\FileLoader;
-use Simexis\MultiLanguage\Loaders\DatabaseLoader;
 use Simexis\MultiLanguage\Loaders\MixedLoader;
-use Simexis\MultiLanguage\Providers\LanguageProvider;
-use Simexis\MultiLanguage\Providers\LanguageEntryProvider;
-use Simexis\MultiLanguage\Helpers\Render;
+use Simexis\MultiLanguage\Loaders\DatabaseLoader;
 use Simexis\MultiLanguage\Generators\UrlGenerator;
+use Simexis\MultiLanguage\Providers\LanguageProvider;
+use Illuminate\Translation\TranslationServiceProvider;
+use Simexis\MultiLanguage\Providers\LanguageEntryProvider;
 
 class MultiLanguageServiceProvider extends TranslationServiceProvider {
 
@@ -186,14 +187,16 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
     }
 	
 	protected function beforeRoute() {
-		$this->app['events']->listen('router.before', function($request, $response) {
-			$locales = app('translator.manager')->getLocales(); 
-			if(!$locales)
-				$locales = [app()->getLocale() => app()->getLocale()];
-			if(array_key_exists($request->segment(1), $locales)) {
-				$this->serverModify($request, $locales);
-			}
-		});
+		if(App::runningInConsole())
+			return;
+		
+		$request = request();
+		$locales = app('translator.manager')->getLocales(); 
+		if(!$locales)
+			$locales = [app()->getLocale() => app()->getLocale()];
+		if(array_key_exists($request->segment(1), $locales)) {
+			$this->serverModify($request, $locales);
+		}
 	}
 	
 	protected function serverModify($request, $locales) {
@@ -324,7 +327,7 @@ class MultiLanguageServiceProvider extends TranslationServiceProvider {
 			return $check;
 		try {
 			$check = Schema::hasTable('languages') && Schema::hasTable('language_entries');
-			return $check = true;
+			return $check;
 		} catch(\Exception $e) {
 			return $check = false;
 		}
